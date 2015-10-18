@@ -3,12 +3,17 @@ package com.cevaris.hashes
 import com.twitter.logging.Logger
 import scala.reflect.ClassTag
 
-class LinearProbeHash[A](implicit m: ClassTag[A]) extends Hashed[A] {
+
+abstract class ProbeHash[A](implicit m: ClassTag[A]) extends Hashed[A] {
 
   private val log = Logger.get(getClass)
 
   val defaultSize: Int = 19
   var table: Array[KeyValue[A]] = empty()
+
+  protected def collisionFunction(attempt: Int): Int
+
+  protected def hashFunction(key: Int): Int
 
   override def get(key: Int): Option[A] =
     getLinearProbe(key, 0)
@@ -30,16 +35,8 @@ class LinearProbeHash[A](implicit m: ClassTag[A]) extends Hashed[A] {
   private def empty(): Array[KeyValue[A]] =
     new Array(defaultSize)
 
-  private def collisionFunction(attempt: Int): Int =
-    attempt + 1
-
-  private def hashFunction(key: Int): Int =
-    key
-
-  private def hash(key: Int, attempt: Int, currSize: Int) = {
+  private def hash(key: Int, attempt: Int, currSize: Int) =
     (hashFunction(key) + collisionFunction(attempt)) % currSize
-  }
-
 
   private def getLinearProbe(key: Int, attempt: Int): Option[A] = {
     val currentIndex = hash(key, attempt, defaultSize)
@@ -53,7 +50,6 @@ class LinearProbeHash[A](implicit m: ClassTag[A]) extends Hashed[A] {
           getLinearProbe(key, attempt + 1)
         }
     }
-
   }
 
   private def setLinearProbe(key: Int, attempt: Int, value: A): Array[KeyValue[A]] = {
@@ -70,4 +66,16 @@ class LinearProbeHash[A](implicit m: ClassTag[A]) extends Hashed[A] {
 }
 
 
+class LinearProbeHash[A](implicit m: ClassTag[A]) extends ProbeHash[A] {
+  override protected def collisionFunction(attempt: Int): Int =
+    attempt + 1
 
+  override protected def hashFunction(key: Int): Int = key
+}
+
+class QuadraticProbeHash[A](implicit m: ClassTag[A]) extends ProbeHash[A] {
+  override protected def collisionFunction(attempt: Int): Int =
+    Math.pow(attempt, 4).toInt
+
+  override protected def hashFunction(key: Int): Int = key
+}
