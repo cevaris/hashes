@@ -90,6 +90,7 @@ class QuadraticProbeHash[A](implicit m: ClassTag[A]) extends ProbeHash[A] {
 
 
 class DoubleHashProbeHash[A](implicit m: ClassTag[A]) extends ProbeHash[A] {
+
   import scala.util.control.Breaks._
 
   // http://www.cs.yorku.ca/~billk/Teaching/lectureNotesHashTables.pdf
@@ -108,7 +109,7 @@ class DoubleHashProbeHash[A](implicit m: ClassTag[A]) extends ProbeHash[A] {
     var currentIndex = hash(key, attempt, defaultSize)
     val offsetIndex = hash2(key, attempt, defaultSize)
 
-    if (table.lift(currentIndex).exists(_.key == key)) {
+    if (!table.lift(currentIndex).contains(null) && table.lift(currentIndex).exists(_.key == key)) {
       return table.lift(currentIndex).map(kv => kv.value)
     }
 
@@ -123,7 +124,12 @@ class DoubleHashProbeHash[A](implicit m: ClassTag[A]) extends ProbeHash[A] {
       }
     }
 
-    table.lift(currentIndex).map(kv => kv.value)
+    if (!table.lift(currentIndex).contains(null)) {
+      table.lift(currentIndex).map(kv => kv.value)
+    } else {
+      None
+    }
+
 
   }
 
