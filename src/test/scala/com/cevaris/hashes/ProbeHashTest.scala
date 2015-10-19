@@ -2,13 +2,16 @@ package com.cevaris.hashes
 
 import org.scalatest.BeforeAndAfterEach
 
+
 class ProbeHashTest
   extends HashesSpec
   with BeforeAndAfterEach {
 
   Seq(
     new LinearProbeHash[String](),
-    new QuadraticProbeHash[String]()
+    new NStepProbeHash[String](n = 3),
+    new QuadraticProbeHash[String](),
+    new DoubleHashProbeHash[String]()
   ).foreach(testHash)
 
   def testHash(hashInstance: ProbeHash[String]) = {

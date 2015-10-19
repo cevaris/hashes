@@ -1,5 +1,6 @@
 package com.cevaris.hashes
 
+import com.cevaris.hashes.Hashed.Sieve
 import com.twitter.logging.Logger
 import scala.reflect.ClassTag
 
@@ -11,9 +12,10 @@ abstract class ProbeHash[A](implicit m: ClassTag[A]) extends Hashed[A] {
   val defaultSize: Int = 19
   var table: Array[KeyValue[A]] = empty()
 
-  protected def collisionFunction(attempt: Int): Int
+  protected def collisionFunction(attempt: Int): Int =
+    attempt + 1
 
-  protected def hashFunction(key: Int): Int
+  protected def hashFunction(key: Int): Int = key
 
   override def get(key: Int): Option[A] =
     getLinearProbe(key, 0)
@@ -32,13 +34,13 @@ abstract class ProbeHash[A](implicit m: ClassTag[A]) extends Hashed[A] {
   override def size(): Int =
     table.count(_ != null)
 
-  private def empty(): Array[KeyValue[A]] =
+  protected def empty(): Array[KeyValue[A]] =
     new Array(defaultSize)
 
-  private def hash(key: Int, attempt: Int, currSize: Int) =
+  protected def hash(key: Int, attempt: Int, currSize: Int) =
     (hashFunction(key) + collisionFunction(attempt)) % currSize
 
-  private def getLinearProbe(key: Int, attempt: Int): Option[A] = {
+  protected def getLinearProbe(key: Int, attempt: Int): Option[A] = {
     val currentIndex = hash(key, attempt, defaultSize)
     table.lift(currentIndex) match {
       case None | Some(null) => None
@@ -52,7 +54,7 @@ abstract class ProbeHash[A](implicit m: ClassTag[A]) extends Hashed[A] {
     }
   }
 
-  private def setLinearProbe(key: Int, attempt: Int, value: A): Array[KeyValue[A]] = {
+  protected def setLinearProbe(key: Int, attempt: Int, value: A): Array[KeyValue[A]] = {
     val currentIndex = hash(key, attempt, defaultSize)
     table.lift(currentIndex) match {
       case None | Some(null) =>
@@ -70,12 +72,70 @@ class LinearProbeHash[A](implicit m: ClassTag[A]) extends ProbeHash[A] {
   override protected def collisionFunction(attempt: Int): Int =
     attempt + 1
 
-  override protected def hashFunction(key: Int): Int = key
 }
+
+
+class NStepProbeHash[A](n: Int)(implicit m: ClassTag[A]) extends ProbeHash[A] {
+  override protected def collisionFunction(attempt: Int): Int =
+    attempt + n
+
+}
+
 
 class QuadraticProbeHash[A](implicit m: ClassTag[A]) extends ProbeHash[A] {
   override protected def collisionFunction(attempt: Int): Int =
-    Math.pow(attempt, 4).toInt
+    Math.pow(attempt, 2).toInt
 
-  override protected def hashFunction(key: Int): Int = key
 }
+
+
+class DoubleHashProbeHash[A](implicit m: ClassTag[A]) extends ProbeHash[A] {
+  import scala.util.control.Breaks._
+
+  // http://www.cs.yorku.ca/~billk/Teaching/lectureNotesHashTables.pdf
+  // The offset is static
+
+  private val log = Logger.get(getClass)
+
+  private val prevPrime = table.length.primes.reverse.head
+
+  private def hash2(key: Int, attempt: Int, currSize: Int) = {
+    val prevHash = hash(key, attempt, currSize)
+    prevPrime - (prevHash % prevPrime)
+  }
+
+  override def getLinearProbe(key: Int, attempt: Int): Option[A] = {
+    var currentIndex = hash(key, attempt, defaultSize)
+    val offsetIndex = hash2(key, attempt, defaultSize)
+
+    if (table.lift(currentIndex).exists(_.key == key)) {
+      return table.lift(currentIndex).map(kv => kv.value)
+    }
+
+    breakable {
+      while (!table.lift(currentIndex).contains(null)) {
+        if (table.lift(currentIndex).exists(_.key != key)) {
+          // Collision
+          currentIndex = (currentIndex + offsetIndex) % table.length
+        } else {
+          break()
+        }
+      }
+    }
+
+    table.lift(currentIndex).map(kv => kv.value)
+
+  }
+
+  override def setLinearProbe(key: Int, attempt: Int, value: A): Array[KeyValue[A]] = {
+    var currentIndex: Int = hash(key, attempt, defaultSize)
+    val offsetIndex: Int = hash2(key, attempt, defaultSize)
+
+    while (!table.lift(currentIndex).contains(null))
+      currentIndex = (currentIndex + offsetIndex) % table.length
+
+    table.updated(currentIndex, KeyValue(key, value))
+  }
+
+}
+
