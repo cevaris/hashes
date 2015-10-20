@@ -25,6 +25,9 @@ abstract class ProbeHash[A](implicit m: ClassTag[A]) extends Hashed[A] {
     value
   }
 
+  override def remove(key: Int): Option[A] =
+    getLinearProbe(key, 0, true)
+
   override def clear(): Int = {
     val currSize = size()
     table = empty()
@@ -40,16 +43,20 @@ abstract class ProbeHash[A](implicit m: ClassTag[A]) extends Hashed[A] {
   protected def hash(key: Int, attempt: Int, currSize: Int) =
     (hashFunction(key) + collisionFunction(attempt)) % currSize
 
-  protected def getLinearProbe(key: Int, attempt: Int): Option[A] = {
+  protected def getLinearProbe(key: Int, attempt: Int, removeItem: Boolean = false): Option[A] = {
     val currentIndex = hash(key, attempt, defaultSize)
     table.lift(currentIndex) match {
       case None | Some(null) => None
       case Some(currKeyValue) =>
         if (currKeyValue.key == key) {
-          Some(currKeyValue.value)
+          val result = Some(currKeyValue.value)
+          if (removeItem) {
+            table.update(currentIndex, null)
+          }
+          result
         } else {
           log.warning(s"Collision with $currKeyValue at $currentIndex when looking for $key")
-          getLinearProbe(key, attempt + 1)
+          getLinearProbe(key, attempt + 1, removeItem)
         }
     }
   }
@@ -93,9 +100,6 @@ class DoubleHashProbeHash[A](implicit m: ClassTag[A]) extends ProbeHash[A] {
 
   import scala.util.control.Breaks._
 
-  // http://www.cs.yorku.ca/~billk/Teaching/lectureNotesHashTables.pdf
-  // The offset is static
-
   private val log = Logger.get(getClass)
 
   private val prevPrime = table.length.primes.reverse.head
@@ -105,12 +109,18 @@ class DoubleHashProbeHash[A](implicit m: ClassTag[A]) extends ProbeHash[A] {
     prevPrime - (prevHash % prevPrime)
   }
 
-  override def getLinearProbe(key: Int, attempt: Int): Option[A] = {
+  override def getLinearProbe(key: Int, attempt: Int, removeItem: Boolean = false): Option[A] = {
     var currentIndex = hash(key, attempt, defaultSize)
     val offsetIndex = hash2(key, attempt, defaultSize)
 
     if (!table.lift(currentIndex).contains(null) && table.lift(currentIndex).exists(_.key == key)) {
-      return table.lift(currentIndex).map(kv => kv.value)
+
+      val result = table.lift(currentIndex).map(kv => kv.value)
+      if (removeItem) {
+        table.update(currentIndex, null)
+      }
+
+      return result
     }
 
     breakable {
@@ -125,7 +135,11 @@ class DoubleHashProbeHash[A](implicit m: ClassTag[A]) extends ProbeHash[A] {
     }
 
     if (!table.lift(currentIndex).contains(null)) {
-      table.lift(currentIndex).map(kv => kv.value)
+      val result = table.lift(currentIndex).map(kv => kv.value)
+      if (removeItem) {
+        table.update(currentIndex, null)
+      }
+      result
     } else {
       None
     }

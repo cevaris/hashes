@@ -80,11 +80,11 @@ class ProbeHashTest
           val actual = newInstance(hashInstance)
           val ds = actual.defaultSize
           actual.set(5, "test5")
-          actual.set(ds + 5, "test5+")
+          actual.set(ds, "test5+")
           actual.size() mustBe 2
 
           actual.get(5) mustBe Some("test5")
-          actual.get(ds + 5) mustBe Some("test5+")
+          actual.get(ds) mustBe Some("test5+")
         }
 
         "handle multiple colliding items" in {
@@ -114,8 +114,43 @@ class ProbeHashTest
         }
       }
 
+      "remove" should {
+        "handle single item" in {
+          val actual = newInstance(hashInstance)
+          actual.set(100, "test")
+
+          actual.size() mustBe 1
+          actual.remove(100) mustBe Some("test")
+          actual.get(100) mustBe None
+        }
+
+        "handle multiple non-colliding items" in {
+          val actual = newInstance(hashInstance)
+          val ds = actual.defaultSize
+          actual.set(5, "test5")
+          actual.set(ds, "test5+")
+          actual.size() mustBe 2
+
+          actual.remove(5) mustBe Some("test5")
+          actual.remove(5) mustBe None
+          actual.size() mustBe 1
+        }
+
+        "handle multiple colliding items" in {
+          val actual = newInstance(hashInstance)
+          val ds = actual.defaultSize
+          actual.set(1, "test1")
+          actual.set(ds + 1, "test1b")
+          actual.size() mustBe 2
+
+          actual.remove(ds + 1) mustBe Some("test1b")
+          actual.remove(ds + 1) mustBe None
+          actual.size() mustBe 1
+        }
+
+      }
+
     }
 
   }
-
 }

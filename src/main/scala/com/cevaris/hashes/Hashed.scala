@@ -20,8 +20,6 @@ trait Hashed[A] {
   def get(key: Int): Option[A]
 
   /**
-   * @param key
-   * @param value
    * @return inserted value A
    */
   def set(key: Int, value: A): A
@@ -33,6 +31,11 @@ trait Hashed[A] {
    * @return
    */
   def clear(): Int
+
+  /**
+   * @return Option[A] Item removed if found
+   */
+  def remove(key: Int): Option[A]
 }
 
 
