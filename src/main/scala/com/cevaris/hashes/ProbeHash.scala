@@ -2,7 +2,6 @@ package com.cevaris.hashes
 
 import com.cevaris.hashes.Hashed.Sieve
 import com.twitter.logging.Logger
-import scala.reflect.ClassTag
 
 
 abstract class ProbeHash[A] extends Hashed[A] {
@@ -18,7 +17,7 @@ abstract class ProbeHash[A] extends Hashed[A] {
   protected def hashFunction(key: Int): Int = key
 
   override def get(key: Int): Option[A] =
-    getLinearProbe(key, 0)
+    getLinearProbe(key, 0, Get)
 
   override def set(key: Int, value: A): A = {
     table = setLinearProbe(key, 0, value)
@@ -26,7 +25,7 @@ abstract class ProbeHash[A] extends Hashed[A] {
   }
 
   override def remove(key: Int): Option[A] =
-    getLinearProbe(key, 0, true)
+    getLinearProbe(key, 0, Remove)
 
   override def clear(): Int = {
     val currSize = size()
@@ -40,25 +39,23 @@ abstract class ProbeHash[A] extends Hashed[A] {
   protected def empty(): Array[Option[KeyValue[A]]] =
     Array.fill(defaultSize)(None)
 
-  //    new Array(defaultSize)(None)
-
   protected def hash(key: Int, attempt: Int, currSize: Int) =
     (hashFunction(key) + collisionFunction(attempt)) % currSize
 
-  protected def getLinearProbe(key: Int, attempt: Int, removeItem: Boolean = false): Option[A] = {
+  protected def getLinearProbe(key: Int, attempt: Int, hashOperation: HashOperation): Option[A] = {
     val currentIndex = hash(key, attempt, defaultSize)
     table(currentIndex) match {
       case None => None
       case Some(currKeyValue) =>
         if (currKeyValue.key == key) {
           val result = Some(currKeyValue.value)
-          if (removeItem) {
+          if (hashOperation == Remove) {
             table.update(currentIndex, None)
           }
           result
         } else {
           log.warning(s"Collision with $currKeyValue at $currentIndex when looking for $key")
-          getLinearProbe(key, attempt + 1, removeItem)
+          getLinearProbe(key, attempt + 1, hashOperation)
         }
     }
   }
@@ -111,14 +108,14 @@ class DoubleHashProbeHash[A] extends ProbeHash[A] {
     prevPrime - (prevHash % prevPrime)
   }
 
-  override def getLinearProbe(key: Int, attempt: Int, removeItem: Boolean = false): Option[A] = {
+  override def getLinearProbe(key: Int, attempt: Int, hashOperation: HashOperation): Option[A] = {
     var currentIndex = hash(key, attempt, defaultSize)
     val offsetIndex = hash2(key, attempt, defaultSize)
 
     if (table(currentIndex).exists(_.key == key)) {
 
       val result = table(currentIndex).map(kv => kv.value)
-      if (removeItem) {
+      if (hashOperation == Remove) {
         table.update(currentIndex, None)
       }
 
@@ -138,7 +135,7 @@ class DoubleHashProbeHash[A] extends ProbeHash[A] {
 
     if (table(currentIndex).isDefined) {
       val result = table(currentIndex).map(kv => kv.value)
-      if (removeItem) {
+      if (hashOperation == Remove) {
         table.update(currentIndex, None)
       }
       result
