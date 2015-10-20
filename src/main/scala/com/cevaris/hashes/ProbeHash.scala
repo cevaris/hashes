@@ -48,13 +48,9 @@ abstract class ProbeHash[A] extends Hashed[A] {
       case None => None
       case Some(currKeyValue) =>
         if (currKeyValue.key == key) {
-          val result = Some(currKeyValue.value)
-          if (hashOperation == Remove) {
-            table.update(currentIndex, None)
-          }
-          result
+          if (hashOperation == Remove) table.update(currentIndex, None)
+          Some(currKeyValue.value)
         } else {
-          log.warning(s"Collision with $currKeyValue at $currentIndex when looking for $key")
           getLinearProbe(key, attempt + 1, hashOperation)
         }
     }
@@ -66,7 +62,6 @@ abstract class ProbeHash[A] extends Hashed[A] {
       case None =>
         table.updated(currentIndex, Some(KeyValue(key, value)))
       case Some(currKeyValue) =>
-        log.warning(s"Collision with $currKeyValue at $currentIndex")
         setLinearProbe(key, attempt + 1, value)
     }
   }
@@ -111,23 +106,20 @@ class DoubleHashProbeHash[A] extends ProbeHash[A] {
     var break = false
     while (table(currentIndex).isDefined && !break) {
       if (table(currentIndex).exists(_.key != key)) {
-        // Collision
+        // Collision, calculate next hash
         currentIndex = (currentIndex + offsetIndex) % table.length
       } else {
         break = true
       }
     }
 
-    if (table(currentIndex).isDefined) {
-      val result = table(currentIndex).map(kv => kv.value)
-      if (hashOperation == Remove) {
-        table.update(currentIndex, None)
-      }
-      result
+    val keyValue = table(currentIndex)
+    if (keyValue.isDefined) {
+      if (hashOperation == Remove) table.update(currentIndex, None)
+      keyValue.map(kv => kv.value)
     } else {
       None
     }
-
 
   }
 
