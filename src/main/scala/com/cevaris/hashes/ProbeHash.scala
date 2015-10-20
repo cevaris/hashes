@@ -117,7 +117,7 @@ class DoubleHashProbeHash[A] extends ProbeHash[A] {
 
     if (table(currentIndex).exists(_.key == key)) {
 
-      val result = table.lift(currentIndex).flatten.map(kv => kv.value)
+      val result = table(currentIndex).map(kv => kv.value)
       if (removeItem) {
         table.update(currentIndex, None)
       }
@@ -126,8 +126,8 @@ class DoubleHashProbeHash[A] extends ProbeHash[A] {
     }
 
     breakable {
-      while (!table.lift(currentIndex).contains(None)) {
-        if (table.lift(currentIndex).flatten.exists(_.key != key)) {
+      while (table(currentIndex).isDefined) {
+        if (table(currentIndex).exists(_.key != key)) {
           // Collision
           currentIndex = (currentIndex + offsetIndex) % table.length
         } else {
@@ -136,8 +136,8 @@ class DoubleHashProbeHash[A] extends ProbeHash[A] {
       }
     }
 
-    if (!table.lift(currentIndex).contains(None)) {
-      val result = table.lift(currentIndex).flatten.map(kv => kv.value)
+    if (table(currentIndex).isDefined) {
+      val result = table(currentIndex).map(kv => kv.value)
       if (removeItem) {
         table.update(currentIndex, None)
       }
