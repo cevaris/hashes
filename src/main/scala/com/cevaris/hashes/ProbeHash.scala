@@ -97,10 +97,6 @@ class QuadraticProbeHash[A] extends ProbeHash[A] {
 
 class DoubleHashProbeHash[A] extends ProbeHash[A] {
 
-  import scala.util.control.Breaks._
-
-  private val log = Logger.get(getClass)
-
   private val prevPrime = table.length.primes.reverse.head
 
   private def hash2(key: Int, attempt: Int, currSize: Int) = {
@@ -112,24 +108,13 @@ class DoubleHashProbeHash[A] extends ProbeHash[A] {
     var currentIndex = hash(key, attempt, defaultSize)
     val offsetIndex = hash2(key, attempt, defaultSize)
 
-    if (table(currentIndex).exists(_.key == key)) {
-
-      val result = table(currentIndex).map(kv => kv.value)
-      if (hashOperation == Remove) {
-        table.update(currentIndex, None)
-      }
-
-      return result
-    }
-
-    breakable {
-      while (table(currentIndex).isDefined) {
-        if (table(currentIndex).exists(_.key != key)) {
-          // Collision
-          currentIndex = (currentIndex + offsetIndex) % table.length
-        } else {
-          break()
-        }
+    var break = false
+    while (table(currentIndex).isDefined && !break) {
+      if (table(currentIndex).exists(_.key != key)) {
+        // Collision
+        currentIndex = (currentIndex + offsetIndex) % table.length
+      } else {
+        break = true
       }
     }
 
