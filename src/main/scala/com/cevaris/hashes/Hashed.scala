@@ -28,7 +28,6 @@ trait Hashed[A] {
 
   /**
    * Number of elements cleared
-   * @return
    */
   def clear(): Int
 
