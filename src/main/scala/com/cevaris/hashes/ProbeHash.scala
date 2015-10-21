@@ -1,14 +1,10 @@
 package com.cevaris.hashes
 
-import com.cevaris.hashes.Hashed.Sieve
-import com.twitter.logging.Logger
+import com.cevaris.hashes.HashedMap.Sieve
 
 
-abstract class ProbeHash[A] extends Hashed[A] {
+abstract class ProbeHash[A] extends HashedMap[A] {
 
-  private val log = Logger.get(getClass)
-
-  val defaultSize: Int = 19
   var table: Array[Option[KeyValue[A]]] = empty()
 
   protected def collisionFunction(attempt: Int): Int =

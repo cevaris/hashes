@@ -3,7 +3,7 @@ package com.cevaris.hashes
 import org.scalatest.BeforeAndAfterEach
 
 
-class ProbeHashTest
+class HashedMapTest
   extends HashesSpec
   with BeforeAndAfterEach {
 
@@ -14,9 +14,9 @@ class ProbeHashTest
     new DoubleHashProbeHash[String]()
   ).foreach(testHash)
 
-  def testHash(hashInstance: ProbeHash[String]) = {
+  def testHash(hashInstance: HashedMap[String]) = {
 
-    def newInstance(hashInstance: ProbeHash[String]): ProbeHash[String] = {
+    def newInstance(hashInstance: HashedMap[String]): HashedMap[String] = {
       hashInstance.clear()
       hashInstance
     }

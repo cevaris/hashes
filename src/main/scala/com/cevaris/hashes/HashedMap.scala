@@ -7,7 +7,7 @@ object Remove extends HashOperation
 object Set extends HashOperation
 object Get extends HashOperation
 
-object Hashed {
+object HashedMap {
 
   implicit class Sieve(val N: Int) extends AnyVal {
     def primes: Seq[Int] = {
@@ -21,7 +21,9 @@ object Hashed {
 
 }
 
-trait Hashed[A] {
+trait HashedMap[A] {
+
+  val defaultSize: Int = 19
 
   def get(key: Int): Option[A]
 
