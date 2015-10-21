@@ -43,6 +43,16 @@ class ProbeHashTest
           actual.size() mustBe 2
         }
 
+        "handle multiple set with same key items" in {
+          val actual = newInstance(hashInstance)
+          val ds = actual.defaultSize
+          actual.set(1, "test1")
+          actual.set(1, "test1a")
+          actual.size() mustBe 1
+
+          actual.get(1) mustBe Some("test1a")
+        }
+
         "handle worst case scenario" in {
           val actual = newInstance(hashInstance)
           val ds = actual.defaultSize

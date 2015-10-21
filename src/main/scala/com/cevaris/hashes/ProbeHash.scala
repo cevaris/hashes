@@ -62,6 +62,10 @@ abstract class ProbeHash[A] extends Hashed[A] {
       case None =>
         table.updated(currentIndex, Some(KeyValue(key, value)))
       case Some(currKeyValue) =>
+        if (currKeyValue.key == key) {
+          // Inserting the same key, with same/different value
+          return table.updated(currentIndex, Some(KeyValue(key, value)))
+        }
         setLinearProbe(key, attempt + 1, value)
     }
   }
@@ -103,14 +107,10 @@ class DoubleHashProbeHash[A] extends ProbeHash[A] {
     var currentIndex = hash(key, attempt, defaultSize)
     val offsetIndex = hash2(key, attempt, defaultSize)
 
-    var break = false
-    while (table(currentIndex).isDefined && !break) {
-      if (table(currentIndex).exists(_.key != key)) {
-        // Collision, calculate next hash
-        currentIndex = (currentIndex + offsetIndex) % table.length
-      } else {
-        break = true
-      }
+    while (
+      table(currentIndex).isDefined && table(currentIndex).exists(_.key != key)
+    ) {
+      currentIndex = (currentIndex + offsetIndex) % table.length
     }
 
     val keyValue = table(currentIndex)
@@ -127,8 +127,11 @@ class DoubleHashProbeHash[A] extends ProbeHash[A] {
     var currentIndex: Int = hash(key, attempt, defaultSize)
     val offsetIndex: Int = hash2(key, attempt, defaultSize)
 
-    while (!table.lift(currentIndex).contains(None))
+    while (
+      table(currentIndex).isDefined && table(currentIndex).exists(_.key != key)
+    ) {
       currentIndex = (currentIndex + offsetIndex) % table.length
+    }
 
     table.updated(currentIndex, Some(KeyValue(key, value)))
   }
